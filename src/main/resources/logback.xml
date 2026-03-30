@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Suppress verbose CloudSim Plus simulation log; only show WARN+ -->
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <!-- Silence the CloudSim Plus simulation engine output -->
+    <logger name="org.cloudsimplus" level="WARN"/>
+    <!-- Our own classes stay at INFO -->
+    <logger name="edu.barrier" level="INFO"/>
+    <root level="WARN">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
