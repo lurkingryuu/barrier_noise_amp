@@ -102,7 +102,7 @@ plt.tight_layout(); plt.savefig('results/figures/fig5_parallel_efficiency.png');
 
 # Fig 6: Heatmap
 print("Fig 6..."); P_arr=[8,32,128,256]; eps_arr=[0.01,0.05,0.10,0.20]
-fig,axes=plt.subplots(1,4,figsize=(12,3.5),sharey=True)
+fig,axes=plt.subplots(1,4,figsize=(9,7.1),sharey=True)
 for ax_i,model in enumerate(MODELS):
     Z=np.zeros((len(eps_arr),len(P_arr)))
     for ei,e in enumerate(eps_arr):
@@ -110,12 +110,12 @@ for ax_i,model in enumerate(MODELS):
             runs=[simulate_run(P,100,e,model,42+r*997) for r in range(NRUNS)]
             Z[ei,pi]=np.mean([w/(ms*P) if ms>0 else 0 for ms,w,_ in runs])
     im=axes[ax_i].imshow(Z,cmap='YlOrRd',vmin=0,vmax=0.45,aspect='auto',origin='lower')
-    axes[ax_i].set_xticks(range(len(P_arr))); axes[ax_i].set_xticklabels(P_arr,fontsize=9)
-    axes[ax_i].set_title(LABELS[model],fontsize=10); axes[ax_i].set_xlabel('P (ranks)',fontsize=9)
+    axes[ax_i].set_xticks(range(len(P_arr))); axes[ax_i].set_xticklabels(P_arr,fontsize=10)
+    axes[ax_i].set_title(LABELS[model],fontsize=11); axes[ax_i].set_xlabel('P (ranks)',fontsize=10)
     if ax_i==0:
-        axes[ax_i].set_yticks(range(len(eps_arr))); axes[ax_i].set_yticklabels([str(e) for e in eps_arr],fontsize=9)
-        axes[ax_i].set_ylabel('Noise ε',fontsize=10)
-fig.suptitle('Idle Fraction Heatmap (B=100)',fontsize=12,y=1.02)
+        axes[ax_i].set_yticks(range(len(eps_arr))); axes[ax_i].set_yticklabels([str(e) for e in eps_arr],fontsize=10)
+        axes[ax_i].set_ylabel('Noise ε',fontsize=11)
+fig.suptitle('Idle Fraction Heatmap (B=100)',fontsize=12,y=0.99)
 fig.colorbar(im,ax=axes.ravel().tolist(),shrink=0.75,label='Idle Fraction')
 plt.tight_layout(); plt.savefig('results/figures/fig6_heatmap_idle_fraction.png',bbox_inches='tight'); plt.close()
 
@@ -125,7 +125,7 @@ rng2=random.Random(12345); phase_times=[]; idle_wastes2=[]
 for _ in range(B2):
     times=[1.0*(1+clamp(sample_noise(model2,eps2,rng2))) for _ in range(P2)]
     tmax=max(times); phase_times.append(tmax); idle_wastes2.append(sum(tmax-t for t in times))
-fig,(ax1,ax2)=plt.subplots(2,1,figsize=(8,5),sharex=True)
+fig,(ax1,ax2)=plt.subplots(2,1,figsize=(7,6),sharex=True)
 phases=list(range(1,B2+1))
 ax1.bar(phases,phase_times,color=COLORS['LOGNORMAL'],alpha=0.8)
 ax1.axhline(1.0,color='grey',linestyle='--',linewidth=1.5,label='Ideal (1.0 s)'); ax1.legend(fontsize=10)

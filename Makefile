@@ -8,7 +8,7 @@ PYTHON  := python3
 RESULTS := results/all_results.csv
 FIGURES := results/figures/fig1_amplification_vs_P.png
 
-.PHONY: all build run demo cloudsim quick full figures clean help
+.PHONY: all build run demo cloudsim cloudsim-full quick full figures clean help
 
 ## Default: build + run full experiment + generate figures
 all: build full figures
@@ -39,6 +39,11 @@ cloudsim: build
 	@echo "Running CloudSim Plus DES validation sweep..."
 	@java -jar $(JAR) cloudsim
 
+## Run the full CloudSim Plus DES experiment grid (slow)
+cloudsim-full: build
+	@echo "Running full CloudSim Plus DES sweep..."
+	@java -jar $(JAR) fullcloudsim
+
 ## Generate all 7 result figures from results/all_results.csv
 figures:
 	@echo "Generating figures..."
@@ -53,4 +58,4 @@ clean:
 
 ## Show this help
 help:
-	@echo "Targets: all | build | demo | cloudsim | quick | full | figures | clean"
+	@echo "Targets: all | build | demo | cloudsim | cloudsim-full | quick | full | figures | clean"

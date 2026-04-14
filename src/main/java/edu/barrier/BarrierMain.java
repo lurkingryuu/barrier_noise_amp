@@ -8,12 +8,13 @@ import java.util.List;
  * Entry point for the Barrier Noise Amplification study.
  *
  * Usage:
- *   java -jar barrier-noise-amplification-1.0.0.jar [demo|quick|full|cloudsim]
+ *   java -jar barrier-noise-amplification-1.0.0.jar [demo|quick|full|cloudsim|fullcloudsim]
  *
  *   demo      — CloudSim Plus single-run trace (16 ranks, 20 phases, lognormal)
  *   cloudsim  — CloudSim Plus DES sweep over a validation grid (≈2 min)
- *   quick     — Analytical sweep, reduced grid (≈10 s)
- *   full      — Analytical sweep, complete grid (≈60 s)      ← default
+ *   quick         — Analytical sweep, reduced grid (≈10 s)
+ *   full          — Analytical sweep, complete grid (≈60 s)      ← default
+ *   fullcloudsim  — CloudSim Plus DES sweep over the full grid (slow)
  */
 public class BarrierMain {
 
@@ -24,9 +25,10 @@ public class BarrierMain {
         switch (mode) {
             case "demo"      -> runCloudSimDemo();
             case "cloudsim"  -> runCloudSimSweep();
+            case "fullcloudsim", "cloudsimfull" -> runFullCloudSimSweep();
             case "quick"     -> runAnalytical(false);
             case "full"      -> runAnalytical(true);
-            default          -> System.out.println("Usage: [demo|cloudsim|quick|full]");
+            default          -> System.out.println("Usage: [demo|cloudsim|fullcloudsim|quick|full]");
         }
     }
 
@@ -115,7 +117,26 @@ public class BarrierMain {
         System.out.println("  ✓ CloudSim Plus DES and analytical engine agree.");
     }
 
-    // ── Mode 3/4: Analytical sweep ───────────────────────────────────────
+    // ── Mode 3: Full CloudSim Plus DES sweep ─────────────────────────────
+
+    static void runFullCloudSimSweep() throws Exception {
+        System.out.println("► Full CloudSim Plus DES sweep  (384 configs × 30 runs)");
+        System.out.println("  This uses the discrete-event engine for the entire grid.");
+        System.out.println();
+
+        long start = System.currentTimeMillis();
+        List<ResultRow> results = new FullCloudSimRunner().runAll();
+        long elapsed = System.currentTimeMillis() - start;
+
+        ResultExporter exporter = new ResultExporter("results/cloudsim_full");
+        exporter.exportCSV(results);
+        exporter.printSummary(results);
+
+        System.out.printf("  Completed in %.1f s%n", elapsed / 1000.0);
+        System.out.println("  CloudSim full results: results/cloudsim_full/all_results.csv");
+    }
+
+    // ── Mode 4/5: Analytical sweep ───────────────────────────────────────
 
     static void runAnalytical(boolean full) throws Exception {
         if (full) {
@@ -203,5 +224,63 @@ class QuickRunner {
     private double mean(double[] a) { double s=0; for(double v:a) s+=v; return s/a.length; }
     private double std(double[] a, double m) {
         double s=0; for(double v:a) s+=(v-m)*(v-m); return Math.sqrt(s/(a.length-1));
+    }
+}
+
+class FullCloudSimRunner {
+    List<ExperimentRunner.ResultRow> runAll() throws Exception {
+        var results = new java.util.ArrayList<ExperimentRunner.ResultRow>();
+        int total = ExperimentRunner.PROCESS_COUNTS.length
+                * ExperimentRunner.PHASE_COUNTS.length
+                * ExperimentRunner.EPSILONS.length
+                * ExperimentRunner.MODELS.length;
+        int done = 0;
+
+        for (int P : ExperimentRunner.PROCESS_COUNTS) {
+            for (int B : ExperimentRunner.PHASE_COUNTS) {
+                for (double e : ExperimentRunner.EPSILONS) {
+                    for (NoiseInjector.NoiseModel m : ExperimentRunner.MODELS) {
+                        results.add(runConfiguration(P, B, e, m));
+                        done++;
+                        if (done % 10 == 0 || done == total) {
+                            System.out.printf("  [%3d/%3d]  P=%3d B=%3d ε=%.2f %s%n",
+                                    done, total, P, B, e, m);
+                        }
+                    }
+                }
+            }
+        }
+        return results;
+    }
+
+    private ExperimentRunner.ResultRow runConfiguration(int P, int B, double e,
+                                                        NoiseInjector.NoiseModel m) {
+        double[] makespans = new double[ExperimentRunner.NUM_RUNS];
+        double[] idles     = new double[ExperimentRunner.NUM_RUNS];
+        double[] amps      = new double[ExperimentRunner.NUM_RUNS];
+        double[] ifs       = new double[ExperimentRunner.NUM_RUNS];
+        double[] ses       = new double[ExperimentRunner.NUM_RUNS];
+
+        for (int r = 0; r < ExperimentRunner.NUM_RUNS; r++) {
+            long seed = ExperimentRunner.BASE_SEED + r * 997L + P * 31L + B * 7L + (long)(e * 1000);
+            BarrierMetrics bm = new CloudSimBarrierJob(P, B, new NoiseInjector(seed), m, e).run();
+            makespans[r] = bm.getMakespan();
+            idles[r]     = bm.getTotalIdleWaste();
+            amps[r]      = bm.getAmplificationFactor();
+            ifs[r]       = bm.getIdleFraction();
+            ses[r]       = bm.getScalingEfficiency();
+        }
+
+        double meanMakespan = mean(makespans), stdMakespan = std(makespans, meanMakespan);
+        double meanIdle     = mean(idles),     stdIdle     = std(idles, meanIdle);
+        double meanAmp      = mean(amps),      stdAmp      = std(amps, meanAmp);
+        return new ExperimentRunner.ResultRow(P, B, e, m,
+                meanMakespan, stdMakespan, 1.96 * stdMakespan / Math.sqrt(ExperimentRunner.NUM_RUNS),
+                meanIdle, stdIdle, meanAmp, stdAmp, mean(ifs), mean(ses));
+    }
+
+    private double mean(double[] a) { double s = 0; for (double v : a) s += v; return s / a.length; }
+    private double std(double[] a, double m) {
+        double s = 0; for (double v : a) s += (v - m) * (v - m); return Math.sqrt(s / (a.length - 1));
     }
 }
